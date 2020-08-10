@@ -1,13 +1,12 @@
 const express = require('express')
-const bodyParser = require('body-parser')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const Users = require('./users-model')
 const restrict = require('../middleware/restrict')
 
-const jsonParser = bodyParser.json()
-
 const router = express.Router()
+
+
 
 router.get('/users', restrict(), async (req, res, next)=>{
     try {
@@ -17,7 +16,7 @@ router.get('/users', restrict(), async (req, res, next)=>{
     }
 })
 
-router.post('/users', jsonParser, async (req, res, next)=>{
+router.post('/users', async (req, res, next)=>{
     try {
         const {username, password} = req.body
         const user = await Users.findBy({ username }).frst()
@@ -40,11 +39,12 @@ router.post('/users', jsonParser, async (req, res, next)=>{
 })
 
 router.post('/login', async(req, res, next)=>{
+    
     try{
         console.log(req.body)
         const {username, password } = req.body
         const user = await Users.findBy({ username }).first()
-
+        const passwordValid = await bcrypt.compare(password, user.password)
         if (!passwordValid) {
             return res.status(401).json({
                 message: "You shall not pass! "
