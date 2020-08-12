@@ -19,7 +19,7 @@ router.get('/users', restrict(), async (req, res, next)=>{
 router.post('/users', async (req, res, next)=>{
     try {
         const {username, password} = req.body
-        const user = await Users.findBy({ username }).frst()
+        const user = await Users.findBy({ username }).first()
 
         if (user) {
             return res.status(409).json({

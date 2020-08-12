@@ -9,15 +9,15 @@ module.exports = {
 };
 
 function find() {
-  return db("users").select("id", "username").orderBy("id");
+  return db("users").select("id", "username", "password", "department").orderBy("id");
 }
 
 function findBy(filter) {
-  return db("users").where(filter).select("id", "username", "password");
+  return db("users").where(filter).select("id", "username", "password", "department");
 }
 
 async function add(user) {
-    user.password = await bcrypt.hash(user.password, 14)
+    
     const [id] = await db("users")
     .insert(user)
 
