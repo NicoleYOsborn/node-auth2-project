@@ -7,19 +7,29 @@ const { isValid } = require('./users-service');
 
 const router = express.Router()
 
+router.get("/users", restrict, async (req, res, next) => {
+    try {
+      const users = await Users.find();
+      res.status(200).json(users);
+    } catch (err) {
+      next({ apiCode: 500, apiMessage: 'db error getting users', ...err })
+    }
+  });
 
-
-router.get('/users', restrict, (req, res, next)=>{
-    console.log('in the get route')
- Users.find().then(users=>{res.status(200).json(users);
+// router.get('/users', restrict, (req, res)=>{
+//     console.log('in the get route')
+//  Users.find()
+//  .then(users=> {
+//     res.status(200).json(users);
         
-    }).catch(err => res.send(err));
-});
+//     })
+//     .catch(err => res.send(err));
+// });
 
 
 router.post('/register', async (req, res, next)=>{
     const credentials = req.body;
-    console.log(credentials)
+    console.log("this is in the register route")
     try {
         if(isValid(credentials)){
             const hash = bcryptjs.hashSync(credentials.password, 10);
