@@ -1,32 +1,30 @@
 
 const jwt = require("jsonwebtoken")
+const secret = process.env.JWT_SECRET;
 
-function restrict() {
-    return async (req, res, next) =>{
-        const authError = {
-            message: 'invalid credentials',
-        }
-    
+module.exports = (req, res, next) => {
+
+        
         try {
-            //express-session will automatically get the session ID from the cookie header, and check to make sure it's valid and the session for this user exists
-            // if (!req.session || !resizeBy.session.user) {
-            //     return res.status(401).json(authError)
-            // }
-            const token = req.headers.authorization
-            if(!token){
-                return res.status(401).json(authError)
-            } 
-            jwt.verify(token, process.env.JWT_SECRET, (err, decoded)=>{
-                if(err){
-                    return res.status(401).json(authError)
-                }
-
-                 next()
-            })
-           
-        } catch(err) {
-            next(err)
+         
+          const token = req.headers.authorization ?
+            req.headers.authorization.split(' ')[1] : '';
+      
+          if (token) {
+            jwt.verify(token, secret, (err, decodedToken) => {
+              if (err) {
+                next({ apiCode: 401, apiMessage: 'invalid or missing credentials' });
+              } else {
+                req.decodedToken = decodedToken;
+                next();
+              }
+            });
+          } else {
+            next({ apiCode: 401, apiMessage: 'invalid or missing credentials' });
+          }
+        } catch (err) {
+          next({ apiCode: 500, apiMessage: 'error validating credentials', ...err });
         }
-    }
-};
-module.exports = restrict
+      
+      
+      };

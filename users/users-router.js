@@ -1,70 +1,61 @@
 const express = require('express')
-const bcrypt = require('bcryptjs')
+const bcryptjs = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const Users = require('./users-model')
 const restrict = require('../middleware/restrict')
+const { isValid } = require('./users-service');
 
 const router = express.Router()
 
 
 
-router.get('/users', restrict(), async (req, res, next)=>{
-    try {
-        res.json(await Users.find())
-    } catch(err) {
-        next(err)
-    }
-})
+router.get('/users', restrict, (req, res, next)=>{
+    console.log('in the get route')
+ Users.find().then(users=>{res.status(200).json(users);
+        
+    }).catch(err => res.send(err));
+});
 
-router.post('/users', async (req, res, next)=>{
-    try {
-        const {username, password} = req.body
-        const user = await Users.findBy({ username }).first()
 
-        if (user) {
-            return res.status(409).json({
-                message: "Username is already taken"
-            })
+router.post('/register', async (req, res, next)=>{
+    const credentials = req.body;
+    console.log(credentials)
+    try {
+        if(isValid(credentials)){
+            const hash = bcryptjs.hashSync(credentials.password, 10);
+            credentials.password = hash;
+
+            const user = await Users.add(credentials);
+            const token = generateToken(user);
+            res.status(201).json({ data: user, token});
+        }else {
+            next({ apiCode: 400, apiMessage: 'username or password missing'});
         }
-
-        const newUser = await Users.add({
-            username,
-            password: await bcrypt.hash(password, 14)
-        })
-
-        res.status(201).json(newUser)
-    } catch(err) {
-        next(err)
+    } catch (err){
+        next({ apiCode: 500, apiMessage: 'error saving new user', err});
     }
+        
 })
 
 router.post('/login', async(req, res, next)=>{
-    
+    const {username, password } = req.body
+
     try{
-        console.log(req.body)
-        const {username, password } = req.body
-        const user = await Users.findBy({ username }).first()
-        const passwordValid = await bcrypt.compare(password, user.password)
-        if (!passwordValid) {
-            return res.status(401).json({
-                message: "You shall not pass! "
-            })
+        if(!isValid(req.body)){
+            next({apiCode: 400, apiMessage: "Incomplete login information"})
+        }else{
+            const [user] = await Users.findBy({ username: username});
+            if (user && bcryptjs.compareSync(password, user.password)){
+                const token = generateToken(user);
+                res.status(200).json({message: `Welcome, ${user.username}!`, token: token});
+            } else {
+                next({ apiCode: 401, apiMessage: "You shall not pass!"});
+            }
         }
-
-        const payload = {
-            userId: user.id,
-            username: user.username,
-            department: user.department
-        }
-
-        res.json({
-            message: `Welcome ${user.username}!`,
-            token: jwt.sign(payload, process.env.JWT_SECRET)
-        })
-    } catch(err) {
-        next(err)
+    } catch (err){
+        next({ apiCode: 500, apiMessage: 'error logging in', ...err})
     }
-})
+});
 
 router.get("/logout", async (req, res, next)=>{
     try {
@@ -80,5 +71,21 @@ router.get("/logout", async (req, res, next)=>{
         next(err)
     }
 })
+
+function generateToken(user) {
+    const payload = {
+      subject: user.id,
+      username: user.username,
+      role: user.department
+    };
+    const options = {
+      expiresIn: "1d"
+    };
+   
+    const secret = process.env.JWT_SECTRET || "tra-la-la";
+  
+    const token = jwt.sign(payload, secret, options);
+    return token;
+  }
 
 module.exports = router;
